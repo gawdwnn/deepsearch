@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
           await langfuse.flushAsync();
         } catch (error) {
           logger.error("Failed to save chat messages", {
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: error instanceof Error ? error.message : String(error),
             chatId: chatId,
             userId: session.user.id,
           });
@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     logger.error("Chat API error", {
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : String(error),
       userId: session.user.id,
       userEmail: session.user.email,
       stack: error instanceof Error ? error.stack : undefined,
