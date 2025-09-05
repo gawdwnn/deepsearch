@@ -32,6 +32,7 @@ export const env = createEnv({
       .enum(["dev", "ci", "regression"])
       .default("dev")
       .optional(),
+    SEARCH_RESULTS_COUNT: z.coerce.number().default(10),
   },
 
   /**
@@ -63,6 +64,7 @@ export const env = createEnv({
     LANGFUSE_PUBLIC_KEY: process.env.LANGFUSE_PUBLIC_KEY,
     LANGFUSE_BASEURL: process.env.LANGFUSE_BASEURL,
     EVAL_DATASET: process.env.EVAL_DATASET,
+    SEARCH_RESULTS_COUNT: process.env.SEARCH_RESULTS_COUNT,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   },

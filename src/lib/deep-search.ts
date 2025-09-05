@@ -11,6 +11,7 @@ import { model } from "~/types/models";
 import { searchSerper } from "~/lib/serper";
 import { scrapePages } from "~/lib/scraper";
 import { logger } from "~/utils/logger";
+import { env } from "~/lib/env";
 
 export const streamFromDeepSearch = (opts: {
   messages: UIMessage[];
@@ -75,7 +76,7 @@ CRITICAL: All web-sourced information must include markdown citations
         ) => {
           try {
             const results = await searchSerper(
-              { q: query, num: 10 },
+              { q: query, num: env.SEARCH_RESULTS_COUNT },
               abortSignal,
             );
 
