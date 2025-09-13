@@ -67,7 +67,7 @@ export const scrapePage = cache<
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown scraping error",
+      error: error instanceof Error ? error.message : String(error),
       url,
     };
   }
@@ -135,7 +135,7 @@ export const scrapePages = cache<
       success: false,
       results: [],
       error:
-        error instanceof Error ? error.message : "Unknown batch scraping error",
+        error instanceof Error ? error.message : String(error),
     };
   }
 });
