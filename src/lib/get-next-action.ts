@@ -82,8 +82,8 @@ When providing the title and reasoning for each action:
 - Title should be extremely concise and descriptive (e.g., "Searching recent injury reports", "Scraping NHS guidance page", "Answering user question")
 - Reasoning should explain why this specific action is needed at this point in the workflow
 - Be specific about what information you're looking for or why you're ready to answer`,
-    prompt: `## Conversation History: ${context.getMessageHistory()}
-
+prompt: `## Conversation History: ${context.getMessageHistory()}
+${context.getLocationContext()}
 ## Core Workflow
 
 1. Search the web for relevant URLs using search

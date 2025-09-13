@@ -9,6 +9,7 @@ import { streamFromDeepSearch } from "~/lib/deep-search";
 import { langfuse } from "~/lib/lanfuse";
 import { checkUserRateLimit, trackUserRequest } from "~/lib/rate-limiter";
 import { checkGlobalRateLimit, recordGlobalRequest } from "~/lib/global-rate-limiter";
+import { getLocationFromRequest } from "~/lib/location-context";
 import { logger } from "~/utils/logger";
 
 const bodySchema = z.object({
@@ -26,6 +27,9 @@ export async function POST(req: NextRequest) {
 
   const { messages, chatId }: { messages: UIMessage[]; chatId: string } =
     bodySchema.parse(await req.json());
+
+  // Extract user location from request
+  const userLocation = getLocationFromRequest(req);
 
   // Create Langfuse trace early for rate limiting
   const trace = langfuse.trace({
@@ -131,6 +135,7 @@ export async function POST(req: NextRequest) {
       userId: session.user.id,
       trace: trace,
       langfuse: langfuse,
+      userLocation: userLocation,
     });
 
     return result;

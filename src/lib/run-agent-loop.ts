@@ -9,16 +9,18 @@ import { getNextAction, type Action } from "./get-next-action";
 import { answerQuestion } from "./answer-question";
 import type { ActionStep, DeepSearchUIMessage } from "~/types/messages";
 import { createActionStep, updateActionStep } from "~/types/messages";
+import type { UserLocation } from "./location-context";
 
 export const runAgentLoop = async (
   messages: UIMessage[],
   writer: UIMessageStreamWriter<DeepSearchUIMessage>,
   opts: {
     langfuseTraceId?: string;
+    userLocation?: UserLocation;
   } = {},
 ): Promise<StreamTextResult<Record<string, never>, string>> => {
   // A persistent container for the state of our system
-  const context = new SystemContext(messages);
+  const context = new SystemContext(messages, opts.userLocation);
   const { langfuseTraceId } = opts;
   
   // Track action steps for data parts writing

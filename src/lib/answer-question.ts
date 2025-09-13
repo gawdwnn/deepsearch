@@ -33,13 +33,12 @@ export const answerQuestion = (
 - Mention information recency when relevant
 - Be thorough but concise
 
-${isFinal ? 'Note: you may not have all the information you need, to answer the question completely. Please provide your best attempt at an answer based oh the available information.' : ''}`,
+${isFinal ? 'Note: you may not have all the information you need, to answer the question completely. Please provide your best attempt at an answer based oh the available information.' : ''}
+`,
     prompt: `## Conversation History: ${context.getMessageHistory()}
-
+${context.getLocationContext()}
 Based on the following information, please respond to the conversation:
-
 ${context.getQueryHistory()}
-
 ${context.getScrapeHistory()}`,
     experimental_transform: [
       smoothStream({

@@ -8,6 +8,7 @@ import { runAgentLoop } from "./run-agent-loop";
 import { upsertChat } from "~/lib/db/mutations";
 import { logger } from "~/utils/logger";
 import type { DeepSearchUIMessage } from "~/types/messages";
+import type { UserLocation } from "./location-context";
 
 interface LangfuseSpan {
   end: (data: {
@@ -46,6 +47,7 @@ interface PersistenceContext {
 export const streamFromDeepSearch = async (opts: {
   messages: UIMessage[];
   langfuseTraceId: string;
+  userLocation?: UserLocation;
 } & PersistenceContext) => {
 
   // Create UI message stream with AI SDK v5 Data Parts
@@ -53,6 +55,7 @@ export const streamFromDeepSearch = async (opts: {
     execute: async ({ writer }) => {
       const agentResult = await runAgentLoop(opts.messages, writer, {
         langfuseTraceId: opts.langfuseTraceId,
+        userLocation: opts.userLocation,
       });
       writer.merge(agentResult.toUIMessageStream());
     },

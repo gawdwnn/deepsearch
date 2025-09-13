@@ -1,5 +1,6 @@
 
 import type { UIMessage } from "ai";
+import type { UserLocation } from "./location-context";
 
 type QueryResultSearchResult = {
   date: string;
@@ -49,8 +50,14 @@ export class SystemContext {
    */
   private scrapeHistory: ScrapeResult[] = [];
 
-  constructor(messages: UIMessage[]) {
+  /**
+   * The user's location context
+   */
+  private readonly userLocation: UserLocation;
+
+  constructor(messages: UIMessage[], userLocation?: UserLocation) {
     this.messages = messages;
+    this.userLocation = userLocation ?? {};
   }
 
   shouldStop() {
@@ -110,5 +117,30 @@ export class SystemContext {
         ].join("\n\n"),
       )
       .join("\n\n");
+  }
+
+  getLocationContext(): string {
+    const locationParts: string[] = [];
+    
+    if (this.userLocation.latitude && this.userLocation.longitude) {
+      locationParts.push(`- lat: ${this.userLocation.latitude}`);
+      locationParts.push(`- lon: ${this.userLocation.longitude}`);
+    }
+    
+    if (this.userLocation.city) {
+      locationParts.push(`- city: ${this.userLocation.city}`);
+    }
+    
+    if (this.userLocation.country) {
+      locationParts.push(`- country: ${this.userLocation.country}`);
+    }
+    
+    if (locationParts.length === 0) {
+      return "";
+    }
+    
+    return `About the origin of user's request:
+${locationParts.join('\n')}
+`;
   }
 }
