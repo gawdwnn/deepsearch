@@ -1,4 +1,4 @@
-import type { MessagePart } from "~/types";
+import type { MessagePart } from "~/types/messages";
 
 interface ToolInvocationProps {
   part: MessagePart;

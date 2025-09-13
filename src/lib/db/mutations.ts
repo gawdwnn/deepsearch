@@ -1,13 +1,13 @@
-import type { UIMessage } from "ai";
 import { eq } from "drizzle-orm";
 import { db } from "./index";
 import { chats, messages } from "./schema";
+import type { DeepSearchUIMessage } from "~/types/messages";
 
 export const upsertChat = async (opts: {
   userId: string;
   chatId: string;
   title: string;
-  messages: UIMessage[];
+  messages: DeepSearchUIMessage[];
 }) => {
   const { userId, chatId, title, messages: messageList } = opts;
 
