@@ -25,6 +25,7 @@ export const ChatPage = ({
   initialMessages,
 }: ChatProps) => {
   const router = useRouter();
+  
   const { messages, status, sendMessage } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
@@ -99,14 +100,11 @@ export const ChatPage = ({
           aria-label="Chat messages"
         >
           <StickToBottom.Content className="flex flex-col gap-4">
-            {messages.map((message, index) => (
-              <ChatMessage
-                key={index}
-                parts={message.parts}
-                role={message.role}
-                userName={userName}
-              />
-            ))}
+            {/* Single ChatMessage component handles everything */}
+            <ChatMessage
+              messages={messages}
+              userName={userName}
+            />
           </StickToBottom.Content>
         </StickToBottom>
 
