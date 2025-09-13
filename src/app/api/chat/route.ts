@@ -6,7 +6,6 @@ import { z } from "zod";
 
 import { auth } from "~/lib/auth";
 import { streamFromDeepSearch } from "~/lib/deep-search";
-import { upsertChat } from "~/lib/db/mutations";
 import { langfuse } from "~/lib/lanfuse";
 import { checkUserRateLimit, trackUserRequest } from "~/lib/rate-limiter";
 import { checkGlobalRateLimit, recordGlobalRequest } from "~/lib/global-rate-limiter";
@@ -125,85 +124,16 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const result = streamFromDeepSearch({
+    const result = await streamFromDeepSearch({
       messages: messages,
-      onFinish: () => {
-        // No-op, we'll handle persistence in toUIMessageStreamResponse
-      },
-      telemetry: {
-        isEnabled: true,
-        functionId: "agent",
-        metadata: {
-          langfuseTraceId: trace.id,
-        },
-      },
+      langfuseTraceId: trace.id,
+      chatId: chatId,
+      userId: session.user.id,
+      trace: trace,
+      langfuse: langfuse,
     });
 
-    return result.toUIMessageStreamResponse({
-      originalMessages: messages,
-      onFinish: async ({ messages: allMessages }) => {
-        try {
-          // Update trace sessionId now that we have the chatId
-          trace.update({
-            sessionId: chatId,
-          });
-
-          // Generate title from first user message
-          const firstUserMessage = allMessages.find(
-            (msg) => msg.role === "user",
-          );
-          let title = "New Chat";
-
-          if (firstUserMessage?.parts) {
-            const textPart = firstUserMessage.parts.find(
-              (part) => part.type === "text",
-            );
-            if (
-              textPart &&
-              "text" in textPart &&
-              typeof textPart.text === "string"
-            ) {
-              title = textPart.text.slice(0, 100);
-            }
-          }
-
-          // Track database chat upsert operation
-          const upsertChatSpan = trace.span({
-            name: "upsert-chat",
-            input: {
-              userId: session.user.id,
-              chatId: chatId,
-              title,
-              messageCount: allMessages.length,
-            },
-          });
-
-          await upsertChat({
-            userId: session.user.id,
-            chatId: chatId,
-            title,
-            messages: allMessages,
-          });
-
-          upsertChatSpan.end({
-            output: {
-              success: true,
-              chatId: chatId,
-              messagesStored: allMessages.length,
-            },
-          });
-
-          // Flush Langfuse trace data
-          await langfuse.flushAsync();
-        } catch (error) {
-          logger.error("Failed to save chat messages", {
-            error: error instanceof Error ? error.message : String(error),
-            chatId: chatId,
-            userId: session.user.id,
-          });
-        }
-      },
-    });
+    return result;
   } catch (error) {
     logger.error("Chat API error", {
       error: error instanceof Error ? error.message : String(error),
