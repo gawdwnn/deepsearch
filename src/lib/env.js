@@ -32,7 +32,7 @@ export const env = createEnv({
       .enum(["dev", "ci", "regression"])
       .default("dev")
       .optional(),
-    SEARCH_RESULTS_COUNT: z.coerce.number().default(3),
+    SEARCH_RESULTS_COUNT: z.coerce.number().default(6),
   },
 
   /**

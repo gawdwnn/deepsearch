@@ -64,11 +64,14 @@ export const ActionSteps = ({ actionSteps }: ActionStepsProps) => {
                       <span>{step.metadata.query}</span>
                     </div>
                   )}
-                  {step.metadata?.scrapedCount && (
+                  {(step.metadata?.scrapedCount ?? step.metadata?.summarizedCount) && (
                     <div className="mt-2 flex items-center gap-2 text-sm text-gray-400">
                       <Link className="size-4" />
                       <span>
-                        Scraped {step.metadata.scrapedCount} of {step.metadata.resultCount} URLs
+                        {step.metadata.summarizedCount
+                          ? `Summarized ${step.metadata.summarizedCount} of ${step.metadata.scrapedCount ?? 0} scraped URLs`
+                          : `Scraped ${step.metadata.scrapedCount} of ${step.metadata.resultCount} URLs`
+                        }
                       </span>
                     </div>
                   )}

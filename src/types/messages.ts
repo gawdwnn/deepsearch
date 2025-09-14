@@ -16,6 +16,7 @@ export interface ActionStep {
     urls?: string[];
     resultCount?: number;
     scrapedCount?: number;
+    summarizedCount?: number;
     duration?: number;
     error?: string;
   };

@@ -3,6 +3,7 @@ import type { StreamTextResult, UIMessage, UIMessageStreamWriter } from "ai";
 import { logger } from "~/utils/logger";
 import { searchSerper } from "~/lib/serper";
 import { scrapePages } from "~/lib/scraper";
+import { summarizeURL } from "~/lib/summarize-url";
 import { env } from "~/lib/env";
 import { SystemContext } from "./system-context";
 import { getNextAction, type Action } from "./get-next-action";
@@ -109,28 +110,66 @@ export const runAgentLoop = async (
         const searchUrls = searchResults.map(result => result.url);
         const scrapeResults = await scrapePages(searchUrls);
 
-        // Combine search and scrape results
-        const combinedResults = searchResults.map((searchResult) => {
+        // For each search result, get its scrape data and summarize in parallel
+        const summarizationPromises = searchResults.map(searchResult => {
           const scrapeResult = scrapeResults.results.find(sr => sr.url === searchResult.url);
 
-          return {
-            ...searchResult,
-            scrapedContent: scrapeResult?.success ? scrapeResult.data : '',
-            scrapeSuccess: scrapeResult?.success ?? false,
-          };
+          if (!scrapeResult?.success) {
+            return Promise.resolve({
+              success: false as const,
+              url: searchResult.url,
+              error: "No content to summarize"
+            });
+          }
+
+          return summarizeURL({
+            conversationHistory: context.getMessageHistory(),
+            scrapedContent: scrapeResult.data,
+            searchMetadata: {
+              title: searchResult.title,
+              url: searchResult.url,
+              date: searchResult.date,
+              snippet: searchResult.snippet,
+            },
+            query: nextAction.query,
+            langfuseTraceId,
+          });
         });
 
-        // Report the combined search history
+        const summarizationResults = await Promise.all(summarizationPromises);
+
+        // Only keep results with successful summaries
+        const finalResults = [];
+        for (let i = 0; i < searchResults.length; i++) {
+          const searchResult = searchResults[i];
+          const summaryResult = summarizationResults[i];
+
+          if (summaryResult?.success && searchResult) {
+            finalResults.push({
+              date: searchResult.date,
+              title: searchResult.title,
+              url: searchResult.url,
+              snippet: searchResult.snippet,
+              summary: summaryResult.summary,
+            });
+          }
+        }
+
+        // Report the combined search history with summaries
         context.reportSearch({
           query: nextAction.query,
-          results: combinedResults,
+          results: finalResults,
         });
 
-        // Update step as completed with result count
+        // Update step as completed with result counts
+        const scrapedCount = scrapeResults.results.filter(r => r.success).length;
+        const summarizedCount = finalResults.length; // Only successful summaries are included
+
         updateStepPhase(stepId, 'completed', {
           query: nextAction.query,
-          resultCount: combinedResults.length,
-          scrapedCount: combinedResults.filter(r => r.scrapeSuccess).length
+          resultCount: searchResults.length,
+          scrapedCount,
+          summarizedCount
         });
 
       } catch (searchError) {

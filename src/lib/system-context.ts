@@ -7,8 +7,7 @@ type SearchResult = {
   title: string;
   url: string;
   snippet: string;
-  scrapedContent: string;
-  scrapeSuccess: boolean;
+  summary: string;
 };
 
 type SearchHistoryEntry = {
@@ -85,7 +84,7 @@ export class SystemContext {
               `### ${result.date} - ${result.title}`,
               result.url,
               result.snippet,
-              result.scrapeSuccess ? `<scrape_result>\n${result.scrapedContent}\n</scrape_result>` : '<scrape_result>\nFailed to scrape content\n</scrape_result>',
+              `<research_summary>\n${result.summary}\n</research_summary>`,
             ].join("\n\n"),
           ),
         ].join("\n\n"),
