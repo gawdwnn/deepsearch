@@ -6,7 +6,7 @@ export type MessagePart = NonNullable<UIMessage["parts"]>[number];
 // Define action step data structure following AI SDK v5 Data Parts pattern
 export interface ActionStep {
   id: string;
-  action: 'search' | 'scrape' | 'analyze' | 'answer';
+  action: 'search' | 'answer';
   title: string;
   reasoning: string;
   phase: 'starting' | 'in_progress' | 'completed' | 'failed';
@@ -15,6 +15,7 @@ export interface ActionStep {
     query?: string;
     urls?: string[];
     resultCount?: number;
+    scrapedCount?: number;
     duration?: number;
     error?: string;
   };

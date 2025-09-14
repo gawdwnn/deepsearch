@@ -64,19 +64,11 @@ export const ActionSteps = ({ actionSteps }: ActionStepsProps) => {
                       <span>{step.metadata.query}</span>
                     </div>
                   )}
-                  {step.action === "scrape" && step.metadata?.urls && (
+                  {step.metadata?.scrapedCount && (
                     <div className="mt-2 flex items-center gap-2 text-sm text-gray-400">
                       <Link className="size-4" />
                       <span>
-                        {step.metadata.urls
-                          .map((url) => {
-                            try {
-                              return new URL(url).hostname;
-                            } catch {
-                              return url;
-                            }
-                          })
-                          .join(", ")}
+                        Scraped {step.metadata.scrapedCount} of {step.metadata.resultCount} URLs
                       </span>
                     </div>
                   )}

@@ -70,8 +70,6 @@ export const runAgentLoop = async (
     // Add metadata based on action type
     if (nextAction.type === "search" && nextAction.query) {
       actionStep.metadata = { query: nextAction.query };
-    } else if (nextAction.type === "scrape" && nextAction.urls) {
-      actionStep.metadata = { urls: nextAction.urls };
     }
 
     // Add step and stream collection immediately
@@ -82,10 +80,10 @@ export const runAgentLoop = async (
     if (nextAction.type === "search") {
       if (!nextAction.query) {
         logger.error("Search action missing query", { action: nextAction });
-        
+
         // Update step as failed
         updateStepPhase(stepId, 'failed', { error: 'Missing search query' });
-        
+
         context.incrementStep();
         continue;
       }
@@ -93,8 +91,8 @@ export const runAgentLoop = async (
       try {
         // Update step to in_progress before starting search
         updateStepPhase(stepId, 'in_progress');
-        
-        
+
+        // First, search for URLs
         const results = await searchSerper(
           { q: nextAction.query, num: env.SEARCH_RESULTS_COUNT },
           undefined,
@@ -107,82 +105,46 @@ export const runAgentLoop = async (
           snippet: result.snippet,
         }));
 
-        context.reportQueries([{
+        // Then, scrape all found URLs
+        const searchUrls = searchResults.map(result => result.url);
+        const scrapeResults = await scrapePages(searchUrls);
+
+        // Combine search and scrape results
+        const combinedResults = searchResults.map((searchResult) => {
+          const scrapeResult = scrapeResults.results.find(sr => sr.url === searchResult.url);
+
+          return {
+            ...searchResult,
+            scrapedContent: scrapeResult?.success ? scrapeResult.data : '',
+            scrapeSuccess: scrapeResult?.success ?? false,
+          };
+        });
+
+        // Report the combined search history
+        context.reportSearch({
           query: nextAction.query,
-          results: searchResults,
-        }]);
+          results: combinedResults,
+        });
 
         // Update step as completed with result count
-        updateStepPhase(stepId, 'completed', { 
+        updateStepPhase(stepId, 'completed', {
           query: nextAction.query,
-          resultCount: searchResults.length 
+          resultCount: combinedResults.length,
+          scrapedCount: combinedResults.filter(r => r.scrapeSuccess).length
         });
 
       } catch (searchError) {
-        logger.error("Search tool error", {
+        logger.error("Search and scrape tool error", {
           error: searchError instanceof Error ? searchError.message : String(searchError),
           query: nextAction.query,
           searchProvider: "serper",
-        });
-
-        // Update step as failed with error
-        updateStepPhase(stepId, 'failed', { 
-          query: nextAction.query,
-          error: searchError instanceof Error ? searchError.message : String(searchError)
-        });
-      }
-
-    } else if (nextAction.type === "scrape") {
-      if (!nextAction.urls || nextAction.urls.length === 0) {
-        logger.error("Scrape action missing URLs", { action: nextAction });
-        context.incrementStep();
-        continue;
-      }
-
-      try {
-        // Update step to in_progress before starting scrape
-        updateStepPhase(stepId, 'in_progress');
-        
-        
-        const scrapeResults = await scrapePages(nextAction.urls);
-        
-        if (scrapeResults.success) {
-          context.reportScrapes(
-            scrapeResults.results.map(result => ({
-              url: result.url,
-              result: result.data,
-            }))
-          );
-
-          // Update step as completed with result count
-          updateStepPhase(stepId, 'completed', { 
-            urls: nextAction.urls,
-            resultCount: scrapeResults.results.length 
-          });
-        } else {
-          logger.error("Scraping failed", { 
-            urls: nextAction.urls, 
-            error: scrapeResults.error 
-          });
-
-          // Update step as failed with error
-          updateStepPhase(stepId, 'failed', { 
-            urls: nextAction.urls,
-            error: scrapeResults.error 
-          });
-        }
-
-      } catch (scrapeError) {
-        logger.error("Scrape tool error", {
-          error: scrapeError instanceof Error ? scrapeError.message : String(scrapeError),
-          urls: nextAction.urls,
           scrapeProvider: "firecrawl",
         });
 
         // Update step as failed with error
-        updateStepPhase(stepId, 'failed', { 
-          urls: nextAction.urls,
-          error: scrapeError instanceof Error ? scrapeError.message : String(scrapeError)
+        updateStepPhase(stepId, 'failed', {
+          query: nextAction.query,
+          error: searchError instanceof Error ? searchError.message : String(searchError)
         });
       }
 

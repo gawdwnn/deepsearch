@@ -2,32 +2,21 @@
 import type { UIMessage } from "ai";
 import type { UserLocation } from "./location-context";
 
-type QueryResultSearchResult = {
+type SearchResult = {
   date: string;
   title: string;
   url: string;
   snippet: string;
+  scrapedContent: string;
+  scrapeSuccess: boolean;
 };
 
-type QueryResult = {
+type SearchHistoryEntry = {
   query: string;
-  results: QueryResultSearchResult[];
-};
-
-type ScrapeResult = {
-  url: string;
-  result: string;
+  results: SearchResult[];
 };
 
 
-const toQueryResult = (
-  query: QueryResultSearchResult,
-) =>
-  [
-    `### ${query.date} - ${query.title}`,
-    query.url,
-    query.snippet,
-  ].join("\n\n");
 
 export class SystemContext {
   /**
@@ -41,14 +30,9 @@ export class SystemContext {
   private step = 0;
 
   /**
-   * The history of all queries searched
+   * The history of all search queries and their scraped results
    */
-  private queryHistory: QueryResult[] = [];
-
-  /**
-   * The history of all URLs scraped
-   */
-  private scrapeHistory: ScrapeResult[] = [];
+  private searchHistory: SearchHistoryEntry[] = [];
 
   /**
    * The user's location context
@@ -87,33 +71,23 @@ export class SystemContext {
       .join("\n\n");
   }
 
-  reportQueries(queries: QueryResult[]) {
-    this.queryHistory.push(...queries);
+  reportSearch(search: SearchHistoryEntry) {
+    this.searchHistory.push(search);
   }
 
-  reportScrapes(scrapes: ScrapeResult[]) {
-    this.scrapeHistory.push(...scrapes);
-  }
-
-  getQueryHistory(): string {
-    return this.queryHistory
-      .map((query) =>
+  getSearchHistory(): string {
+    return this.searchHistory
+      .map((search) =>
         [
-          `## Query: "${query.query}"`,
-          ...query.results.map(toQueryResult),
-        ].join("\n\n"),
-      )
-      .join("\n\n");
-  }
-
-  getScrapeHistory(): string {
-    return this.scrapeHistory
-      .map((scrape) =>
-        [
-          `## Scrape: "${scrape.url}"`,
-          `<scrape_result>`,
-          scrape.result,
-          `</scrape_result>`,
+          `## Query: "${search.query}"`,
+          ...search.results.map((result) =>
+            [
+              `### ${result.date} - ${result.title}`,
+              result.url,
+              result.snippet,
+              result.scrapeSuccess ? `<scrape_result>\n${result.scrapedContent}\n</scrape_result>` : '<scrape_result>\nFailed to scrape content\n</scrape_result>',
+            ].join("\n\n"),
+          ),
         ].join("\n\n"),
       )
       .join("\n\n");

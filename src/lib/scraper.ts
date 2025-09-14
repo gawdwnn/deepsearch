@@ -27,7 +27,7 @@ export type ScrapeResponse = ScrapeSuccessResponse | ScrapeErrorResponse;
 
 export interface BulkScrapeSuccessResponse {
   success: true;
-  results: ScrapeSuccessResponse[];
+  results: ScrapeResponse[];
 }
 
 export interface BulkScrapeFailureResponse {
@@ -40,38 +40,6 @@ export type BulkScrapeResponse =
   | BulkScrapeSuccessResponse
   | BulkScrapeFailureResponse;
 
-export const scrapePage = cache<
-  ScrapeResponse,
-  [string],
-  (url: string) => Promise<ScrapeResponse>
->("scrapePage", async (url: string): Promise<ScrapeResponse> => {
-  try {
-    const result = await firecrawl.scrape(url, {
-      formats: ["markdown"],
-    });
-
-    if (result.markdown) {
-      return {
-        success: true,
-        data: result.markdown,
-        url,
-        metadata: result.metadata,
-      };
-    }
-
-    return {
-      success: false,
-      error: "Failed to extract content from page",
-      url,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-      url,
-    };
-  }
-});
 
 export const scrapePages = cache<
   BulkScrapeResponse,
@@ -107,21 +75,10 @@ export const scrapePages = cache<
         }
       });
 
-      if (failedResults.length > 0) {
-        const errorSummary = failedResults
-          .map((r) => `${r.url}: ${r.error}`)
-          .join("\n");
-
-        return {
-          success: false,
-          results: [...successfulResults, ...failedResults],
-          error: `Failed to scrape some pages:\n${errorSummary}`,
-        };
-      }
-
+      // Always return success: true, include both successful and failed results
       return {
         success: true,
-        results: successfulResults,
+        results: [...successfulResults, ...failedResults],
       };
     }
 

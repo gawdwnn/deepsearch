@@ -38,8 +38,7 @@ ${isFinal ? 'Note: you may not have all the information you need, to answer the 
     prompt: `## Conversation History: ${context.getMessageHistory()}
 ${context.getLocationContext()}
 Based on the following information, please respond to the conversation:
-${context.getQueryHistory()}
-${context.getScrapeHistory()}`,
+${context.getSearchHistory()}`,
     experimental_transform: [
       smoothStream({
         delayInMs: 20,
