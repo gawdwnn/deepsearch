@@ -33,19 +33,30 @@ export const runAgentLoop = async (
     });
   };
 
-  const updateStepPhase = (stepId: string, phase: ActionStep['phase'], metadata?: ActionStep['metadata']) => {
-    const currentStep = actionSteps.find(s => s.id === stepId);
-    if (currentStep) {
-      const updatedStep = updateActionStep(currentStep, {
-        phase,
-        metadata: metadata ? { ...currentStep.metadata, ...metadata } : currentStep.metadata
-      });
-      const stepIndex = actionSteps.findIndex(s => s.id === stepId);
-      actionSteps[stepIndex] = updatedStep;
+  const manageActionStep = (
+    action: 'create' | 'update',
+    stepData: ActionStep | { id: string; phase: ActionStep['phase']; metadata?: ActionStep['metadata'] }
+  ) => {
+    if (action === 'create') {
+      const step = stepData as ActionStep;
+      actionSteps.push(step);
+      streamActionStep(step);
+    } else if (action === 'update') {
+      const { id, phase, metadata } = stepData as { id: string; phase: ActionStep['phase']; metadata?: ActionStep['metadata'] };
+      const currentStep = actionSteps.find(s => s.id === id);
 
-      streamActionStep(updatedStep);
-    } else {
-      logger.warn('Attempted to update non-existent step', { stepId, phase });
+      if (currentStep) {
+        const updatedStep = updateActionStep(currentStep, {
+          phase,
+          metadata: metadata ? { ...currentStep.metadata, ...metadata } : currentStep.metadata
+        });
+
+        const stepIndex = actionSteps.findIndex(s => s.id === id);
+        actionSteps[stepIndex] = updatedStep;
+        streamActionStep(updatedStep);
+      } else {
+        logger.warn('Attempted to update non-existent step', { stepId: id, phase });
+      }
     }
   };
 
@@ -59,25 +70,32 @@ export const runAgentLoop = async (
       'Analyzing question and creating search strategy'
     );
 
-    actionSteps.push(planStep);
-    streamActionStep(planStep);
-    updateStepPhase(planStepId, 'in_progress');
+    manageActionStep('create', planStep);
+    manageActionStep('update', { id: planStepId, phase: 'in_progress' });
 
     let queryPlan: QueryPlan;
     try {
       queryPlan = await queryRewriter(context, langfuseTraceId);
 
-      updateStepPhase(planStepId, 'completed', {
-        plan: queryPlan.plan,
-        queries: queryPlan.queries
+      manageActionStep('update', {
+        id: planStepId,
+        phase: 'completed',
+        metadata: {
+          plan: queryPlan.plan,
+          queries: queryPlan.queries
+        }
       });
     } catch (planError) {
       logger.error("Query planning failed", {
         error: planError instanceof Error ? planError.message : String(planError),
       });
 
-      updateStepPhase(planStepId, 'failed', {
-        error: planError instanceof Error ? planError.message : String(planError)
+      manageActionStep('update', {
+        id: planStepId,
+        phase: 'failed',
+        metadata: {
+          error: planError instanceof Error ? planError.message : String(planError)
+        }
       });
 
       context.incrementStep();
@@ -93,10 +111,13 @@ export const runAgentLoop = async (
       `Running ${queryPlan.queries.length} searches in parallel`
     );
 
-    actionSteps.push(searchStep);
-    streamActionStep(searchStep);
-    updateStepPhase(searchStepId, 'in_progress', {
-      queries: queryPlan.queries
+    manageActionStep('create', searchStep);
+    manageActionStep('update', {
+      id: searchStepId,
+      phase: 'in_progress',
+      metadata: {
+        queries: queryPlan.queries
+      }
     });
 
     try {
@@ -121,9 +142,10 @@ export const runAgentLoop = async (
 
           if (!scrapeResult?.success) {
             return Promise.resolve({
-              success: false as const,
+              success: false,
               url: searchResult.url,
-              error: "No content to summarize"
+              error: "No content to summarize",
+              summary: ""
             });
           }
 
@@ -180,11 +202,15 @@ export const runAgentLoop = async (
       const totalScraped = allSearchResults.reduce((sum, r) => sum + r.scrapeResults.results.filter(sr => sr.success).length, 0);
       const totalSummarized = allSearchResults.reduce((sum, r) => sum + r.results.length, 0);
 
-      updateStepPhase(searchStepId, 'completed', {
-        queries: queryPlan.queries,
-        resultCount: totalResults,
-        scrapedCount: totalScraped,
-        summarizedCount: totalSummarized
+      manageActionStep('update', {
+        id: searchStepId,
+        phase: 'completed',
+        metadata: {
+          queries: queryPlan.queries,
+          resultCount: totalResults,
+          scrapedCount: totalScraped,
+          summarizedCount: totalSummarized
+        }
       });
 
     } catch (searchError) {
@@ -193,9 +219,13 @@ export const runAgentLoop = async (
         queries: queryPlan.queries,
       });
 
-      updateStepPhase(searchStepId, 'failed', {
-        queries: queryPlan.queries,
-        error: searchError instanceof Error ? searchError.message : String(searchError)
+      manageActionStep('update', {
+        id: searchStepId,
+        phase: 'failed',
+        metadata: {
+          queries: queryPlan.queries,
+          error: searchError instanceof Error ? searchError.message : String(searchError)
+        }
       });
     }
 
@@ -210,18 +240,17 @@ export const runAgentLoop = async (
       nextAction.reasoning
     );
 
-    actionSteps.push(decisionStep);
-    streamActionStep(decisionStep);
+    manageActionStep('create', decisionStep);
 
     if (nextAction.type === "answer") {
-      updateStepPhase(decisionStepId, 'completed');
+      manageActionStep('update', { id: decisionStepId, phase: 'completed' });
       const result = answerQuestion(context, { langfuseTraceId });
       return {
         result,
         finalActionSteps: actionSteps
       };
     } else {
-      updateStepPhase(decisionStepId, 'completed');
+      manageActionStep('update', { id: decisionStepId, phase: 'completed' });
     }
 
     context.incrementStep();

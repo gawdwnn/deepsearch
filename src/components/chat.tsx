@@ -38,18 +38,9 @@ export const ChatPage = ({
 
         setLiveActionSteps(prev => {
           const existing = prev.find(s => s.id === stepData.id);
-
-          if (existing) {
-            // Only update if timestamp is newer (prevent duplicate updates)
-            if (stepData.timestamp > existing.timestamp) {
-              return prev.map(s => s.id === stepData.id ? stepData : s);
-            } else {
-              return prev; // No change
-            }
-          } else {
-            // Add new step
-            return [...prev, stepData];
-          }
+          return existing
+            ? prev.map(s => s.id === stepData.id ? stepData : s)
+            : [...prev, stepData];
         });
       }
     },
