@@ -1,17 +1,16 @@
 import type { UIMessage } from 'ai';
 
-// Extract message part type from UIMessage
 export type MessagePart = NonNullable<UIMessage["parts"]>[number];
-
-// Define action step data structure following AI SDK v5 Data Parts pattern
 export interface ActionStep {
   id: string;
-  action: 'search' | 'answer';
+  action: 'plan' | 'search' | 'continue' | 'answer';
   title: string;
   reasoning: string;
   phase: 'starting' | 'in_progress' | 'completed' | 'failed';
   timestamp: number;
   metadata?: {
+    plan?: string;
+    queries?: string[];
     query?: string;
     urls?: string[];
     resultCount?: number;
@@ -22,7 +21,7 @@ export interface ActionStep {
   };
 }
 
-// Define message-level metadata (NOT content - this is for timestamps, tokens, etc.)
+// Message-level metadata (timestamps, tokens, etc.)
 export interface MessageMetadata {
   createdAt?: number;
   model?: string;
@@ -31,12 +30,13 @@ export interface MessageMetadata {
   processingTime?: number;
 }
 
-// Define Data Parts types following AI SDK v5 pattern with index signature
+// AI SDK v5 Data Parts types
 export interface DataParts {
   'action-steps': {
     steps: ActionStep[];
     currentStep?: string; // ID of currently active step
   };
+  'action-step': ActionStep; // Individual step for transient streaming
   'citations': {
     sources: Array<{
       url: string;
@@ -56,18 +56,10 @@ export interface DataParts {
   [key: string]: unknown;
 }
 
-// Create typed UIMessage following AI SDK v5 generics pattern
+// Typed UIMessage for this application
 export type DeepSearchUIMessage = UIMessage<MessageMetadata, DataParts>;
 
-// Helper type for action step updates
-export interface ActionStepUpdate {
-  stepId: string;
-  phase: ActionStep['phase'];
-  metadata?: ActionStep['metadata'];
-  timestamp: number;
-}
-
-// Validation helpers for AI SDK v5 message validation
+// Action step helpers
 export const createActionStep = (
   id: string,
   action: ActionStep['action'],
