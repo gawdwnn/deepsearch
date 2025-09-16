@@ -7,6 +7,7 @@ import { summarizeURL } from "~/lib/summarize-url";
 import { env } from "~/lib/env";
 import { SystemContext } from "./system-context";
 import { getNextAction, type Action } from "./get-next-action";
+import { queryRewriter, type QueryPlan } from "./query-rewriter";
 import { answerQuestion } from "./answer-question";
 import type { ActionStep, DeepSearchUIMessage } from "~/types/messages";
 import { createActionStep, updateActionStep } from "~/types/messages";
@@ -19,83 +20,89 @@ export const runAgentLoop = async (
     langfuseTraceId?: string;
     userLocation?: UserLocation;
   } = {},
-): Promise<StreamTextResult<Record<string, never>, string>> => {
-  // A persistent container for the state of our system
+): Promise<{ result: StreamTextResult<Record<string, never>, string>; finalActionSteps: ActionStep[] }> => {
   const context = new SystemContext(messages, opts.userLocation);
   const { langfuseTraceId } = opts;
-  
-  // Track action steps for data parts writing
   const actionSteps: ActionStep[] = [];
 
-  // Helper function to stream action steps collection
-  const streamActionSteps = () => {
+  const streamActionStep = (step: ActionStep) => {
     writer.write({
-      type: 'data-action-steps',
-      data: {
-        steps: actionSteps,
-        currentStep: actionSteps[actionSteps.length - 1]?.id
-      }
+      type: 'data-action-step',
+      data: step,
+      transient: true
     });
   };
 
-  // Helper function to update step phase and stream immediately
   const updateStepPhase = (stepId: string, phase: ActionStep['phase'], metadata?: ActionStep['metadata']) => {
     const currentStep = actionSteps.find(s => s.id === stepId);
     if (currentStep) {
-      const updatedStep = updateActionStep(currentStep, { 
+      const updatedStep = updateActionStep(currentStep, {
         phase,
         metadata: metadata ? { ...currentStep.metadata, ...metadata } : currentStep.metadata
       });
       const stepIndex = actionSteps.findIndex(s => s.id === stepId);
       actionSteps[stepIndex] = updatedStep;
-      
-      // Stream updated action steps collection
-      streamActionSteps();
+
+      streamActionStep(updatedStep);
+    } else {
+      logger.warn('Attempted to update non-existent step', { stepId, phase });
     }
   };
 
-  // A loop that continues until we have an answer or we've taken 10 actions
   while (!context.shouldStop()) {
-    // We choose the next action based on the state of our system
-    const nextAction: Action = await getNextAction(context, langfuseTraceId);
-
-    // Create action step for this action
-    const stepId = `step-${context.getStepCount() + 1}`; // +1 because we haven't incremented yet
-    const actionStep = createActionStep(
-      stepId,
-      nextAction.type,
-      nextAction.title,
-      nextAction.reasoning
+    // Step 1: Plan research approach
+    const planStepId = `plan-${context.getStepCount() + 1}`;
+    const planStep = createActionStep(
+      planStepId,
+      'plan',
+      'Planning research approach',
+      'Analyzing question and creating search strategy'
     );
-    
-    // Add metadata based on action type
-    if (nextAction.type === "search" && nextAction.query) {
-      actionStep.metadata = { query: nextAction.query };
+
+    actionSteps.push(planStep);
+    streamActionStep(planStep);
+    updateStepPhase(planStepId, 'in_progress');
+
+    let queryPlan: QueryPlan;
+    try {
+      queryPlan = await queryRewriter(context, langfuseTraceId);
+
+      updateStepPhase(planStepId, 'completed', {
+        plan: queryPlan.plan,
+        queries: queryPlan.queries
+      });
+    } catch (planError) {
+      logger.error("Query planning failed", {
+        error: planError instanceof Error ? planError.message : String(planError),
+      });
+
+      updateStepPhase(planStepId, 'failed', {
+        error: planError instanceof Error ? planError.message : String(planError)
+      });
+
+      context.incrementStep();
+      continue;
     }
 
-    // Add step and stream collection immediately
-    actionSteps.push(actionStep);
-    streamActionSteps();
+    // Step 2: Execute search queries
+    const searchStepId = `search-${context.getStepCount() + 1}`;
+    const searchStep = createActionStep(
+      searchStepId,
+      'search',
+      'Executing search queries',
+      `Running ${queryPlan.queries.length} searches in parallel`
+    );
 
-    // We execute the action and update the state of our system
-    if (nextAction.type === "search") {
-      if (!nextAction.query) {
-        logger.error("Search action missing query", { action: nextAction });
+    actionSteps.push(searchStep);
+    streamActionStep(searchStep);
+    updateStepPhase(searchStepId, 'in_progress', {
+      queries: queryPlan.queries
+    });
 
-        // Update step as failed
-        updateStepPhase(stepId, 'failed', { error: 'Missing search query' });
-
-        context.incrementStep();
-        continue;
-      }
-
-      try {
-        // Update step to in_progress before starting search
-        updateStepPhase(stepId, 'in_progress');
-
-        // First, search for URLs
+    try {
+      const searchPromises = queryPlan.queries.map(async (query) => {
         const results = await searchSerper(
-          { q: nextAction.query, num: env.SEARCH_RESULTS_COUNT },
+          { q: query, num: env.SEARCH_RESULTS_COUNT },
           undefined,
         );
 
@@ -106,11 +113,9 @@ export const runAgentLoop = async (
           snippet: result.snippet,
         }));
 
-        // Then, scrape all found URLs
         const searchUrls = searchResults.map(result => result.url);
         const scrapeResults = await scrapePages(searchUrls);
 
-        // For each search result, get its scrape data and summarize in parallel
         const summarizationPromises = searchResults.map(searchResult => {
           const scrapeResult = scrapeResults.results.find(sr => sr.url === searchResult.url);
 
@@ -131,14 +136,13 @@ export const runAgentLoop = async (
               date: searchResult.date,
               snippet: searchResult.snippet,
             },
-            query: nextAction.query,
+            query,
             langfuseTraceId,
           });
         });
 
         const summarizationResults = await Promise.all(summarizationPromises);
 
-        // Only keep results with successful summaries
         const finalResults = [];
         for (let i = 0; i < searchResults.length; i++) {
           const searchResult = searchResults[i];
@@ -155,50 +159,77 @@ export const runAgentLoop = async (
           }
         }
 
-        // Report the combined search history with summaries
-        context.reportSearch({
-          query: nextAction.query,
+        return {
+          query,
           results: finalResults,
-        });
+          searchResults,
+          scrapeResults,
+        };
+      });
 
-        // Update step as completed with result counts
-        const scrapedCount = scrapeResults.results.filter(r => r.success).length;
-        const summarizedCount = finalResults.length; // Only successful summaries are included
+      const allSearchResults = await Promise.all(searchPromises);
 
-        updateStepPhase(stepId, 'completed', {
-          query: nextAction.query,
-          resultCount: searchResults.length,
-          scrapedCount,
-          summarizedCount
-        });
-
-      } catch (searchError) {
-        logger.error("Search and scrape tool error", {
-          error: searchError instanceof Error ? searchError.message : String(searchError),
-          query: nextAction.query,
-          searchProvider: "serper",
-          scrapeProvider: "firecrawl",
-        });
-
-        // Update step as failed with error
-        updateStepPhase(stepId, 'failed', {
-          query: nextAction.query,
-          error: searchError instanceof Error ? searchError.message : String(searchError)
+      for (const searchResult of allSearchResults) {
+        context.reportSearch({
+          query: searchResult.query,
+          results: searchResult.results,
         });
       }
 
-    } else if (nextAction.type === "answer") {
-      // Update step as completed for answer action
-      updateStepPhase(stepId, 'completed');
-      
-      return answerQuestion(context, { langfuseTraceId });
+      const totalResults = allSearchResults.reduce((sum, r) => sum + r.searchResults.length, 0);
+      const totalScraped = allSearchResults.reduce((sum, r) => sum + r.scrapeResults.results.filter(sr => sr.success).length, 0);
+      const totalSummarized = allSearchResults.reduce((sum, r) => sum + r.results.length, 0);
+
+      updateStepPhase(searchStepId, 'completed', {
+        queries: queryPlan.queries,
+        resultCount: totalResults,
+        scrapedCount: totalScraped,
+        summarizedCount: totalSummarized
+      });
+
+    } catch (searchError) {
+      logger.error("Parallel search execution failed", {
+        error: searchError instanceof Error ? searchError.message : String(searchError),
+        queries: queryPlan.queries,
+      });
+
+      updateStepPhase(searchStepId, 'failed', {
+        queries: queryPlan.queries,
+        error: searchError instanceof Error ? searchError.message : String(searchError)
+      });
     }
 
-    // We increment the step counter
+    // Step 3: Decide whether to continue or answer
+    const nextAction: Action = await getNextAction(context, langfuseTraceId);
+
+    const decisionStepId = `decision-${context.getStepCount() + 1}`;
+    const decisionStep = createActionStep(
+      decisionStepId,
+      nextAction.type,
+      nextAction.title,
+      nextAction.reasoning
+    );
+
+    actionSteps.push(decisionStep);
+    streamActionStep(decisionStep);
+
+    if (nextAction.type === "answer") {
+      updateStepPhase(decisionStepId, 'completed');
+      const result = answerQuestion(context, { langfuseTraceId });
+      return {
+        result,
+        finalActionSteps: actionSteps
+      };
+    } else {
+      updateStepPhase(decisionStepId, 'completed');
+    }
+
     context.incrementStep();
   }
 
-  // If we've taken 10 actions and still don't have an answer,
-  // we ask the LLM to give its best attempt at an answer
-  return answerQuestion(context, { isFinal: true, langfuseTraceId });
+  const result = answerQuestion(context, { isFinal: true, langfuseTraceId });
+  return {
+    result,
+    finalActionSteps: actionSteps
+  };
 };

@@ -4,13 +4,11 @@ import { z } from "zod";
 import { model } from "~/types/models";
 import type { SystemContext } from "./system-context";
 
-export interface SearchAction {
-  type: "search";
+export interface ContinueAction {
+  type: "continue";
   title: string;
   reasoning: string;
-  query: string;
 }
-
 
 export interface AnswerAction {
   type: "answer";
@@ -19,31 +17,25 @@ export interface AnswerAction {
 }
 
 export type Action =
-  | SearchAction
+  | ContinueAction
   | AnswerAction;
 
 export const actionSchema = z.object({
   title: z
     .string()
     .describe(
-      "The title of the action, to be displayed in the UI. Be extremely concise. 'Searching Saka's injury history', 'Checking HMRC industrial action', 'Comparing toaster ovens'",
+      "The title of the action, to be displayed in the UI. Be extremely concise. 'Need more information', 'Ready to answer question'",
     ),
   reasoning: z
     .string()
     .describe("The reason you chose this step."),
   type: z
-    .enum(["search", "answer"])
+    .enum(["continue", "answer"])
     .describe(
       `The type of action to take.
-      - 'search': Search the web for information and automatically scrape found URLs.
-      - 'answer': Answer the user's question and complete the loop.`,
+      - 'continue': More information is needed to answer the question completely.
+      - 'answer': Sufficient information has been gathered to provide a comprehensive answer.`,
     ),
-  query: z
-    .string()
-    .describe(
-      "The query to search for. Only Required if type is 'search'.",
-    )
-    .optional(),
 });
 
 export const getNextAction = async (
@@ -62,39 +54,29 @@ export const getNextAction = async (
         },
       },
     }),
-    system: `You are a helpful AI assistant with web search capabilities that automatically scrapes found URLs.
+    system: `You are a decision-making component of an AI research assistant. Your only job is to determine whether we have enough information to answer the user's question or if we need to continue gathering more information.
 
-When providing the title and reasoning for each action:
-- Title should be extremely concise and descriptive (e.g., "Searching recent injury reports", "Answering user question")
-- Reasoning should explain why this specific action is needed at this point in the workflow
-- Be specific about what information you're looking for or why you're ready to answer`,
+When providing the title and reasoning:
+- Title should be extremely concise (e.g., "Need more information", "Ready to answer")
+- Reasoning should explain why you believe we can answer now or what gaps still exist`,
 prompt: `## Conversation History: ${context.getMessageHistory()}
 ${context.getLocationContext()}
-## Core Workflow
 
-1. Search the web for relevant information (automatically scrapes all found URLs)
-2. Synthesize information from multiple sources
-3. Provide comprehensive answers with proper citations
+## Current Information Available
+${context.getSearchHistory()}
 
-## Search Guidelines
+## Decision Task
 
-- For current/latest/recent queries: Use both specific dates and relative terms
-  - Include "today", "this week", "latest", "recent" as appropriate
-  - Can also use the current date when specificity helps
-- Note publication dates and prioritize recent information
-- Search for multiple diverse sources when possible
-- Each search automatically retrieves full content from found URLs
+Based on the conversation history and the information we've gathered so far, determine:
 
-## Action Selection
+- **continue**: We don't have enough information to provide a comprehensive answer yet
+- **answer**: We have sufficient information to provide a complete and accurate response
 
-Choose the most appropriate next action based on the context and user's question:
-
-- **search**: When you need more information about a topic (automatically includes full content from found pages)
-- **answer**: When you have sufficient information to provide a complete response
-
-## Context
-
-${context.getSearchHistory()}`,
+Consider:
+- Do we have enough factual information to answer all aspects of the user's question?
+- Are there significant gaps or contradictions in our current knowledge?
+- Would additional searches likely provide crucial missing information?
+- Is the information current enough for questions about recent events?`,
   });
 
   return result.object as Action;
