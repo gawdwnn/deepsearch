@@ -1,5 +1,5 @@
+import { ArrowRight, Brain, Link, Search } from "lucide-react";
 import { useState } from "react";
-import { Search, Link, Brain, ArrowRight } from "lucide-react";
 import type { ActionStep } from "~/types/messages";
 import { Markdown } from "./markdown";
 
@@ -88,16 +88,17 @@ export const ActionSteps = ({ actionSteps }: ActionStepsProps) => {
                   )}
                   {step.action === "search" && step.metadata?.queries && (
                     <div className="mt-2">
-                      <div className="mb-2 flex items-center gap-2 text-sm text-gray-400">
-                        <Search className="size-4" />
-                        <span>
-                          Executed {step.metadata.queries.length} searches in
-                          parallel
-                        </span>
+                      <div className="mb-2 text-sm font-medium text-blue-400">
+                        Search Queries:
                       </div>
-                      <ul className="ml-6 list-inside list-disc space-y-1 text-sm text-gray-400">
+                      <ul className="list-inside list-decimal space-y-1 text-sm text-gray-300">
                         {step.metadata.queries.map((query, i) => (
-                          <li key={i}>{query}</li>
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="mt-0.5 flex-shrink-0 text-blue-400">
+                              {i + 1}.
+                            </span>
+                            <span>{query}</span>
+                          </li>
                         ))}
                       </ul>
                     </div>
@@ -114,14 +115,12 @@ export const ActionSteps = ({ actionSteps }: ActionStepsProps) => {
                       <span>Continuing research - need more information</span>
                     </div>
                   )}
-                  {(step.metadata?.scrapedCount ??
-                    step.metadata?.summarizedCount) && (
+                  {step.action === "search" && step.metadata?.resultCount && (
                     <div className="mt-2 flex items-center gap-2 text-sm text-gray-400">
                       <Link className="size-4" />
                       <span>
-                        {step.metadata.summarizedCount
-                          ? `Summarized ${step.metadata.summarizedCount} of ${step.metadata.scrapedCount ?? 0} scraped URLs`
-                          : `Scraped ${step.metadata.scrapedCount} of ${step.metadata.resultCount} URLs`}
+                        Retrieved and processed {step.metadata.resultCount}{" "}
+                        results.
                       </span>
                     </div>
                   )}

@@ -18,6 +18,7 @@ export const env = createEnv({
     GOOGLE_GENERATIVE_AI_API_KEY: z.string(),
     SERPER_API_KEY: z.string(),
     FIRECRAWL_API_KEY: z.string(),
+    TAVILY_API_KEY: z.string(),
     LOG_LEVEL: z
       .enum(["debug", "info", "warn", "error"])
       .default("info")
@@ -55,6 +56,7 @@ export const env = createEnv({
     GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
     SERPER_API_KEY: process.env.SERPER_API_KEY,
     FIRECRAWL_API_KEY: process.env.FIRECRAWL_API_KEY,
+    TAVILY_API_KEY: process.env.TAVILY_API_KEY,
     LOG_LEVEL: process.env.LOG_LEVEL,
     NODE_ENV: process.env.NODE_ENV,
     LANGFUSE_SECRET_KEY: process.env.LANGFUSE_SECRET_KEY,
