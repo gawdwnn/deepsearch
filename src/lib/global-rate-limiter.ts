@@ -31,13 +31,9 @@ export interface GlobalRateLimitResult {
 export async function recordGlobalRequest({
   windowMs,
   keyPrefix = "global_rate_limit",
-}: Pick<
-  RateLimitConfig,
-  "windowMs" | "keyPrefix"
->): Promise<void> {
+}: Pick<RateLimitConfig, "windowMs" | "keyPrefix">): Promise<void> {
   const now = Date.now();
-  const windowStartTimestamp =
-    Math.floor(now / windowMs) * windowMs;
+  const windowStartTimestamp = Math.floor(now / windowMs) * windowMs;
   const key = `${keyPrefix}:${windowStartTimestamp}`;
 
   try {
@@ -48,9 +44,7 @@ export async function recordGlobalRequest({
     const results = await pipeline.exec();
 
     if (!results) {
-      throw new Error(
-        "Redis pipeline execution failed",
-      );
+      throw new Error("Redis pipeline execution failed");
     }
   } catch (error) {
     logger.error("Rate limit recording failed", {
@@ -74,15 +68,12 @@ export async function checkGlobalRateLimit({
   maxRetries = 3,
 }: RateLimitConfig): Promise<GlobalRateLimitResult> {
   const now = Date.now();
-  const windowStartTimestamp =
-    Math.floor(now / windowMs) * windowMs;
+  const windowStartTimestamp = Math.floor(now / windowMs) * windowMs;
   const key = `${keyPrefix}:${windowStartTimestamp}`;
 
   try {
     const currentCount = await redis.get(key);
-    const requestCount = currentCount
-      ? parseInt(currentCount, 10)
-      : 0;
+    const requestCount = currentCount ? parseInt(currentCount, 10) : 0;
 
     const isAllowed = requestCount < maxRequests;
     const remainingRequests = Math.max(0, maxRequests - requestCount);

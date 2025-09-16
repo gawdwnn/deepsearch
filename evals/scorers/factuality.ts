@@ -37,14 +37,10 @@ export const checkFactuality = async (opts: {
       (E) The answers differ, but these differences don't matter from the perspective of factuality.
     `,
     schema: z.object({
-      answer: z
-        .enum(["A", "B", "C", "D", "E"])
-        .describe("Your selection."),
+      answer: z.enum(["A", "B", "C", "D", "E"]).describe("Your selection."),
       rationale: z
         .string()
-        .describe(
-          "Why you chose this answer. Be very detailed.",
-        ),
+        .describe("Why you chose this answer. Be very detailed."),
     }),
   });
 
@@ -68,19 +64,15 @@ export const checkFactuality = async (opts: {
 };
 
 // This is the scorer that can be passed into the scorers in Evalite
-export const Factuality = createScorer<
-  UIMessage[],
-  string,
-  string
->({
+export const Factuality = createScorer<UIMessage[], string, string>({
   name: "Factuality",
   scorer: async ({ input, expected, output }) => {
     // Extract the question from the UIMessage format
     const question = input
-      .filter(msg => msg.role === 'user')
-      .map(msg => msg.parts?.find(part => part.type === 'text')?.text)
-      .join(' ');
-    
+      .filter((msg) => msg.role === "user")
+      .map((msg) => msg.parts?.find((part) => part.type === "text")?.text)
+      .join(" ");
+
     return checkFactuality({
       question,
       groundTruth: expected!,

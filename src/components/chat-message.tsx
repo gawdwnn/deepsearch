@@ -10,14 +10,18 @@ interface ChatMessageProps {
   liveActionSteps?: ActionStep[];
 }
 
-export const ChatMessage = ({ messages, userName, liveActionSteps = [] }: ChatMessageProps) => {
+export const ChatMessage = ({
+  messages,
+  userName,
+  liveActionSteps = [],
+}: ChatMessageProps) => {
   return (
     <>
       {messages.map((message, index) => {
         if (!message.parts || message.parts.length === 0) {
           return null;
         }
-        
+
         const isAI = message.role === "assistant";
 
         return (
@@ -43,8 +47,13 @@ export const ChatMessage = ({ messages, userName, liveActionSteps = [] }: ChatMe
                   );
                 }
                 if (isAI) {
-                  const actionPart = message.parts.find(part => part.type === 'data-action-steps');
-                  const persistedSteps = actionPart && 'data' in actionPart ? (actionPart.data as { steps?: ActionStep[] })?.steps : undefined;
+                  const actionPart = message.parts.find(
+                    (part) => part.type === "data-action-steps",
+                  );
+                  const persistedSteps =
+                    actionPart && "data" in actionPart
+                      ? (actionPart.data as { steps?: ActionStep[] })?.steps
+                      : undefined;
                   if (persistedSteps?.length) {
                     return (
                       <CollapsibleProgress

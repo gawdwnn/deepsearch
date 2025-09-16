@@ -16,9 +16,7 @@ export interface AnswerAction {
   reasoning: string;
 }
 
-export type Action =
-  | ContinueAction
-  | AnswerAction;
+export type Action = ContinueAction | AnswerAction;
 
 export const actionSchema = z.object({
   title: z
@@ -26,16 +24,12 @@ export const actionSchema = z.object({
     .describe(
       "The title of the action, to be displayed in the UI. Be extremely concise. 'Need more information', 'Ready to answer question'",
     ),
-  reasoning: z
-    .string()
-    .describe("The reason you chose this step."),
-  type: z
-    .enum(["continue", "answer"])
-    .describe(
-      `The type of action to take.
+  reasoning: z.string().describe("The reason you chose this step."),
+  type: z.enum(["continue", "answer"]).describe(
+    `The type of action to take.
       - 'continue': More information is needed to answer the question completely.
       - 'answer': Sufficient information has been gathered to provide a comprehensive answer.`,
-    ),
+  ),
 });
 
 export const getNextAction = async (
@@ -59,7 +53,7 @@ export const getNextAction = async (
 When providing the title and reasoning:
 - Title should be extremely concise (e.g., "Need more information", "Ready to answer")
 - Reasoning should explain why you believe we can answer now or what gaps still exist`,
-prompt: `## Conversation History: ${context.getMessageHistory()}
+    prompt: `## Conversation History: ${context.getMessageHistory()}
 ${context.getLocationContext()}
 
 ## Current Information Available

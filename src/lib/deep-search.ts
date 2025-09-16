@@ -1,8 +1,5 @@
 import type { UIMessage } from "ai";
-import {
-  createUIMessageStream,
-  createUIMessageStreamResponse,
-} from "ai";
+import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 
 import { runAgentLoop } from "./run-agent-loop";
 import { upsertChat } from "~/lib/db/mutations";
@@ -44,12 +41,13 @@ interface PersistenceContext {
   langfuse: LangfuseClient;
 }
 
-export const streamFromDeepSearch = async (opts: {
-  messages: UIMessage[];
-  langfuseTraceId: string;
-  userLocation?: UserLocation;
-} & PersistenceContext) => {
-
+export const streamFromDeepSearch = async (
+  opts: {
+    messages: UIMessage[];
+    langfuseTraceId: string;
+    userLocation?: UserLocation;
+  } & PersistenceContext,
+) => {
   // Store final action steps for persistence
   let finalActionSteps: ActionStep[] = [];
 
@@ -58,20 +56,26 @@ export const streamFromDeepSearch = async (opts: {
     execute: async ({ writer }) => {
       // Create assistant message before action steps stream
       writer.write({
-        type: 'text-start',
-        id: 'assistant-response'
+        type: "text-start",
+        id: "assistant-response",
       });
 
-      const { result, finalActionSteps: steps } = await runAgentLoop(opts.messages, writer, {
-        langfuseTraceId: opts.langfuseTraceId,
-        userLocation: opts.userLocation,
-      });
+      const { result, finalActionSteps: steps } = await runAgentLoop(
+        opts.messages,
+        writer,
+        {
+          langfuseTraceId: opts.langfuseTraceId,
+          userLocation: opts.userLocation,
+        },
+      );
 
       finalActionSteps = steps;
 
-      writer.merge(result.toUIMessageStream({
-        sendStart: false
-      }));
+      writer.merge(
+        result.toUIMessageStream({
+          sendStart: false,
+        }),
+      );
     },
     originalMessages: opts.messages as DeepSearchUIMessage[],
     onFinish: async ({ messages: allMessages }) => {
@@ -86,12 +90,16 @@ export const streamFromDeepSearch = async (opts: {
           (msg: UIMessage) => msg.role === "user",
         );
         let title = "";
-        
+
         if (firstUserMessage?.parts) {
           const textPart = firstUserMessage.parts.find(
             (part) => part.type === "text",
           );
-          if (textPart && "text" in textPart && typeof textPart.text === "string") {
+          if (
+            textPart &&
+            "text" in textPart &&
+            typeof textPart.text === "string"
+          ) {
             title = textPart.text.slice(0, 100);
           }
         }
@@ -109,15 +117,17 @@ export const streamFromDeepSearch = async (opts: {
 
         // Add final action steps to the last assistant message for persistence
         if (finalActionSteps.length > 0) {
-          const lastAssistantMessage = allMessages.findLast(msg => msg.role === 'assistant');
+          const lastAssistantMessage = allMessages.findLast(
+            (msg) => msg.role === "assistant",
+          );
           if (lastAssistantMessage?.parts) {
             // Add persistent action steps data part
             lastAssistantMessage.parts.push({
-              type: 'data-action-steps',
+              type: "data-action-steps",
               data: {
                 steps: finalActionSteps,
-                currentStep: finalActionSteps[finalActionSteps.length - 1]?.id
-              }
+                currentStep: finalActionSteps[finalActionSteps.length - 1]?.id,
+              },
             });
           }
         }
@@ -153,7 +163,7 @@ export const streamFromDeepSearch = async (opts: {
 
 export async function askDeepSearch(
   messages: UIMessage[],
-  opts: { langfuseTraceId?: string } = {}
+  opts: { langfuseTraceId?: string } = {},
 ): Promise<string> {
   // For evals, we need to use the original runAgentLoop directly
   // since we need the text result, not the streaming response
@@ -169,7 +179,7 @@ export async function askDeepSearch(
       // No-op: error handling happens at higher level
     },
   };
-  
+
   const { result } = await runAgentLoop(messages, noOpWriter, {
     langfuseTraceId: opts.langfuseTraceId,
   });

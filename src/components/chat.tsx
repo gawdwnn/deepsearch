@@ -26,20 +26,20 @@ export const ChatPage = ({
   initialMessages,
 }: ChatProps) => {
   const router = useRouter();
-  
+
   const { messages, status, sendMessage } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
     }),
     messages: initialMessages,
     onData: (dataPart) => {
-      if (dataPart.type === 'data-action-step') {
+      if (dataPart.type === "data-action-step") {
         const stepData = dataPart.data as ActionStep;
 
-        setLiveActionSteps(prev => {
-          const existing = prev.find(s => s.id === stepData.id);
+        setLiveActionSteps((prev) => {
+          const existing = prev.find((s) => s.id === stepData.id);
           return existing
-            ? prev.map(s => s.id === stepData.id ? stepData : s)
+            ? prev.map((s) => (s.id === stepData.id ? stepData : s))
             : [...prev, stepData];
         });
       }
@@ -49,7 +49,6 @@ export const ChatPage = ({
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [hasSentFirstMessage, setHasSentFirstMessage] = useState(false);
   const [liveActionSteps, setLiveActionSteps] = useState<ActionStep[]>([]);
-
 
   // Generate consistent chat ID for new chats
   const [generatedChatId] = useState(() =>

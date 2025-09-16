@@ -20,11 +20,14 @@ type OptimisticAction =
 export const ChatSidebarContent = ({
   chats,
   currentChatId,
-  isAuthenticated
+  isAuthenticated,
 }: ChatSidebarContentProps) => {
   const router = useRouter();
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
-  const [deleteModal, setDeleteModal] = useState<{ chatId: string; title: string } | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{
+    chatId: string;
+    title: string;
+  } | null>(null);
   const [, startNavigatingTransition] = useTransition();
 
   const [optimisticChats, updateOptimisticChats] = useOptimistic(
@@ -32,17 +35,15 @@ export const ChatSidebarContent = ({
     (state, action: OptimisticAction) => {
       switch (action.type) {
         case "UPDATE_TITLE":
-          return state.map(chat =>
-            chat.id === action.chatId
-              ? { ...chat, title: action.title }
-              : chat
+          return state.map((chat) =>
+            chat.id === action.chatId ? { ...chat, title: action.title } : chat,
           );
         case "DELETE_CHAT":
-          return state.filter(chat => chat.id !== action.chatId);
+          return state.filter((chat) => chat.id !== action.chatId);
         default:
           return state;
       }
-    }
+    },
   );
 
   const handleTitleUpdate = (chatId: string) => {
@@ -54,7 +55,7 @@ export const ChatSidebarContent = ({
       updateOptimisticChats({
         type: "UPDATE_TITLE",
         chatId: editingChatId,
-        title: newTitle
+        title: newTitle,
       });
       setEditingChatId(null);
     }
@@ -65,7 +66,7 @@ export const ChatSidebarContent = ({
   };
 
   const handleDelete = (chatId: string) => {
-    const chat = optimisticChats.find(c => c.id === chatId);
+    const chat = optimisticChats.find((c) => c.id === chatId);
     if (chat) {
       setDeleteModal({ chatId, title: chat.title });
     }
@@ -75,7 +76,7 @@ export const ChatSidebarContent = ({
     if (deleteModal) {
       updateOptimisticChats({
         type: "DELETE_CHAT",
-        chatId: deleteModal.chatId
+        chatId: deleteModal.chatId,
       });
 
       // If we're deleting the currently active chat, navigate away
@@ -88,11 +89,7 @@ export const ChatSidebarContent = ({
   };
 
   if (!isAuthenticated) {
-    return (
-      <p className="text-sm text-gray-500">
-        Sign in to start chatting
-      </p>
-    );
+    return <p className="text-sm text-gray-500">Sign in to start chatting</p>;
   }
 
   if (optimisticChats.length === 0) {

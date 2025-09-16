@@ -4,11 +4,7 @@ import { z } from "zod";
 import { factualityModel } from "~/types/models";
 import type { UIMessage } from "ai";
 
-const generateEvaluationStatementsPrompt = ({
-  output,
-}: {
-  output: string;
-}) => {
+const generateEvaluationStatementsPrompt = ({ output }: { output: string }) => {
   return `Given the text, break it down into meaningful statements while preserving context and relationships.
 Don't split too aggressively.
 
@@ -196,7 +192,9 @@ export const checkAnswerRelevancy = async (opts: {
     model: factualityModel,
     prompt: generateEvaluationStatementsPrompt({ output: opts.output }),
     schema: z.object({
-      statements: z.array(z.string()).describe("Array of meaningful statements extracted from the text"),
+      statements: z
+        .array(z.string())
+        .describe("Array of meaningful statements extracted from the text"),
     }),
   });
 
@@ -220,10 +218,18 @@ export const checkAnswerRelevancy = async (opts: {
     system: ANSWER_RELEVANCY_AGENT_INSTRUCTIONS,
     prompt: generateEvaluatePrompt({ input: opts.input, statements }),
     schema: z.object({
-      verdicts: z.array(z.object({
-        verdict: z.enum(["yes", "no", "unsure"]).describe("The relevance verdict for this statement"),
-        reason: z.string().describe("Clear explanation of why this verdict was chosen"),
-      })).describe("Array of verdict objects, one for each statement"),
+      verdicts: z
+        .array(
+          z.object({
+            verdict: z
+              .enum(["yes", "no", "unsure"])
+              .describe("The relevance verdict for this statement"),
+            reason: z
+              .string()
+              .describe("Clear explanation of why this verdict was chosen"),
+          }),
+        )
+        .describe("Array of verdict objects, one for each statement"),
     }),
   });
 
@@ -236,8 +242,10 @@ export const checkAnswerRelevancy = async (opts: {
     unsure: 0.5,
   };
 
-  const statementScores = verdicts.map(verdict => scores[verdict.verdict]);
-  const averageScore = statementScores.reduce((sum, score) => sum + score, 0) / statementScores.length;
+  const statementScores = verdicts.map((verdict) => scores[verdict.verdict]);
+  const averageScore =
+    statementScores.reduce((sum, score) => sum + score, 0) /
+    statementScores.length;
 
   return {
     score: averageScore,
@@ -249,19 +257,15 @@ export const checkAnswerRelevancy = async (opts: {
 };
 
 // This is the scorer that can be passed into the scorers in Evalite
-export const AnswerRelevancy = createScorer<
-  UIMessage[],
-  string,
-  string
->({
+export const AnswerRelevancy = createScorer<UIMessage[], string, string>({
   name: "AnswerRelevancy",
   scorer: async ({ input, output }) => {
     // Extract the question from the UIMessage format
     const question = input
-      .filter(msg => msg.role === 'user')
-      .map(msg => msg.parts?.find(part => part.type === 'text')?.text)
-      .join(' ');
-    
+      .filter((msg) => msg.role === "user")
+      .map((msg) => msg.parts?.find((part) => part.type === "text")?.text)
+      .join(" ");
+
     return checkAnswerRelevancy({
       input: question,
       output,

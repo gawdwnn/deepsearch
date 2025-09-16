@@ -29,13 +29,21 @@ export interface SummarizeURLErrorResponse {
   url: string;
 }
 
-export type SummarizeURLResult = SummarizeURLResponse | SummarizeURLErrorResponse;
+export type SummarizeURLResult =
+  | SummarizeURLResponse
+  | SummarizeURLErrorResponse;
 
 const summarizeURLInternal = async (
   input: SummarizeURLInput,
 ): Promise<SummarizeURLResult> => {
   try {
-    const { conversationHistory, scrapedContent, searchMetadata, query, langfuseTraceId } = input;
+    const {
+      conversationHistory,
+      scrapedContent,
+      searchMetadata,
+      query,
+      langfuseTraceId,
+    } = input;
 
     if (!scrapedContent.trim()) {
       return {
@@ -79,7 +87,7 @@ Critical Reminder: If content lacks a specific aspect of the research topic, cle
 ## Source Information
 - **Title**: ${searchMetadata.title}
 - **URL**: ${searchMetadata.url}
-- **Date**: ${searchMetadata.date || 'Not specified'}
+- **Date**: ${searchMetadata.date || "Not specified"}
 - **Preview**: ${searchMetadata.snippet}
 
 ## Content to Summarize ${scrapedContent}
@@ -93,7 +101,6 @@ Please create a detailed synthesis of this content as it relates to the research
       summary: result.text,
       url: searchMetadata.url,
     };
-
   } catch (error) {
     logger.error("URL summarization failed", {
       error: error instanceof Error ? error.message : String(error),

@@ -6,7 +6,9 @@ export const ciData: { input: UIMessage[]; expected: string }[] = [
       {
         id: "2",
         role: "user",
-        parts: [{ type: "text", text: "What are the main features of Next.js 15?" }],
+        parts: [
+          { type: "text", text: "What are the main features of Next.js 15?" },
+        ],
       },
     ],
     expected: `React 19 Support: Next.js 15 provides full support for React 19, both in the App Router and Pages Router. This includes new features and improvements from React 19, such as sibling pre-warming and new hooks like useActionState, useFormStatus, and useOptimistic.

@@ -28,10 +28,7 @@ export const env = createEnv({
     LANGFUSE_SECRET_KEY: z.string(),
     LANGFUSE_PUBLIC_KEY: z.string(),
     LANGFUSE_BASEURL: z.string().url(),
-    EVAL_DATASET: z
-      .enum(["dev", "ci", "regression"])
-      .default("dev")
-      .optional(),
+    EVAL_DATASET: z.enum(["dev", "ci", "regression"]).default("dev").optional(),
     SEARCH_RESULTS_COUNT: z.coerce.number().default(3),
   },
 

@@ -16,7 +16,7 @@ export const EditChatTitle = ({
   initialTitle,
   isActive,
   onSave,
-  onCancel
+  onCancel,
 }: EditChatTitleProps) => {
   const [title, setTitle] = useState(initialTitle);
   const [isSaving, startSavingTransition] = useTransition();
@@ -88,25 +88,21 @@ export const EditChatTitle = ({
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           disabled={isSaving}
-          className={`flex-1 rounded-lg p-3 text-sm text-gray-300 bg-gray-800 border focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+          className={`flex-1 rounded-lg border bg-gray-800 p-3 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 ${
             error
               ? "border-red-400"
               : isActive
-              ? "border-gray-600"
-              : "border-gray-700"
+                ? "border-gray-600"
+                : "border-gray-700"
           } ${isSaving ? "opacity-50" : ""}`}
           placeholder="Enter chat title..."
           maxLength={255}
         />
       </div>
 
-      {error && (
-        <div className="mt-1 text-xs text-red-400 px-3">
-          {error}
-        </div>
-      )}
+      {error && <div className="mt-1 px-3 text-xs text-red-400">{error}</div>}
 
-      <div className="mt-1 text-xs text-gray-500 px-3">
+      <div className="mt-1 px-3 text-xs text-gray-500">
         {title.length}/255 characters
       </div>
     </div>

@@ -61,7 +61,7 @@ export const updateChatTitle = async (opts: {
     .update(chats)
     .set({
       title: title.trim(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     })
     .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
     .returning({ id: chats.id });
@@ -73,10 +73,7 @@ export const updateChatTitle = async (opts: {
   return result[0];
 };
 
-export const deleteChat = async (opts: {
-  chatId: string;
-  userId: string;
-}) => {
+export const deleteChat = async (opts: { chatId: string; userId: string }) => {
   const { chatId, userId } = opts;
 
   const result = await db

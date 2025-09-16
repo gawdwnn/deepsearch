@@ -21,10 +21,7 @@ class MarkdownJoiner {
         this.buffer += char;
 
         // Check for complete markdown elements or false positives
-        if (
-          this.isCompleteLink() ||
-          this.isCompleteBold()
-        ) {
+        if (this.isCompleteLink() || this.isCompleteBold()) {
           // Complete markdown element - flush buffer as is
           output += this.buffer;
           this.clearBuffer();
@@ -55,19 +52,13 @@ class MarkdownJoiner {
     // For links: if we see [ followed by something other than valid link syntax
     if (this.buffer.startsWith("[")) {
       // If we hit a newline or another [ without completing the link, it's false positive
-      return (
-        char === "\n" ||
-        (char === "[" && this.buffer.length > 1)
-      );
+      return char === "\n" || (char === "[" && this.buffer.length > 1);
     }
 
     // For bold: if we see * or ** followed by whitespace or newline
     if (this.buffer.startsWith("*")) {
       // Single * followed by whitespace is likely a list item
-      if (
-        this.buffer.length === 1 &&
-        /\s/.test(char)
-      ) {
+      if (this.buffer.length === 1 && /\s/.test(char)) {
         return true;
       }
       // If we hit newline without completing bold, it's false positive
@@ -94,15 +85,10 @@ export const markdownJoinerTransform =
   () => {
     const joiner = new MarkdownJoiner();
 
-    return new TransformStream<
-      TextStreamPart<TOOLS>,
-      TextStreamPart<TOOLS>
-    >({
+    return new TransformStream<TextStreamPart<TOOLS>, TextStreamPart<TOOLS>>({
       transform(chunk, controller) {
         if (chunk.type === "text-delta") {
-          const processedText = joiner.processText(
-            chunk.text,
-          );
+          const processedText = joiner.processText(chunk.text);
           if (processedText) {
             controller.enqueue({
               ...chunk,

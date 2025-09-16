@@ -40,7 +40,6 @@ export type BulkScrapeResponse =
   | BulkScrapeSuccessResponse
   | BulkScrapeFailureResponse;
 
-
 export const scrapePages = cache<
   BulkScrapeResponse,
   [string[]],
@@ -91,8 +90,7 @@ export const scrapePages = cache<
     return {
       success: false,
       results: [],
-      error:
-        error instanceof Error ? error.message : String(error),
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 });

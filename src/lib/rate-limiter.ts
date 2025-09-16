@@ -48,7 +48,10 @@ export async function checkUserRateLimit(
     .select({ count: sql<number>`count(*)` })
     .from(userRequests)
     .where(
-      and(eq(userRequests.userId, userId), gte(userRequests.createdAt, dailyWindowStart)),
+      and(
+        eq(userRequests.userId, userId),
+        gte(userRequests.createdAt, dailyWindowStart),
+      ),
     );
 
   const count = requestsToday[0]?.count ?? 0;

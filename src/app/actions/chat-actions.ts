@@ -13,7 +13,7 @@ export type ActionResult = {
 
 export async function updateChatTitleAction(
   chatId: string,
-  title: string
+  title: string,
 ): Promise<ActionResult> {
   try {
     const session = await auth();
@@ -22,28 +22,28 @@ export async function updateChatTitleAction(
       logger.warn("Unauthorized chat title update attempt", { chatId });
       return {
         success: false,
-        error: "Unauthorized"
+        error: "Unauthorized",
       };
     }
 
     if (!title.trim()) {
       return {
         success: false,
-        error: "Title cannot be empty"
+        error: "Title cannot be empty",
       };
     }
 
     if (title.length > 255) {
       return {
         success: false,
-        error: "Title too long (max 255 characters)"
+        error: "Title too long (max 255 characters)",
       };
     }
 
     await updateChatTitle({
       chatId,
       userId: session.user.id,
-      title: title.trim()
+      title: title.trim(),
     });
 
     revalidatePath("/");
@@ -55,21 +55,22 @@ export async function updateChatTitleAction(
 
     return {
       success: true,
-      chatId
+      chatId,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     logger.error("Failed to update chat title", {
       chatId,
-      error: errorMessage
+      error: errorMessage,
     });
 
     return {
       success: false,
-      error: errorMessage === "Chat not found or access denied"
-        ? "Chat not found"
-        : "Failed to update title"
+      error:
+        errorMessage === "Chat not found or access denied"
+          ? "Chat not found"
+          : "Failed to update title",
     };
   }
 }
@@ -82,39 +83,40 @@ export async function deleteChatAction(chatId: string): Promise<ActionResult> {
       logger.warn("Unauthorized chat deletion attempt", { chatId });
       return {
         success: false,
-        error: "Unauthorized"
+        error: "Unauthorized",
       };
     }
 
     await deleteChat({
       chatId,
-      userId: session.user.id
+      userId: session.user.id,
     });
 
     revalidatePath("/");
 
     logger.info("Chat deleted successfully", {
       chatId,
-      userId: session.user.id
+      userId: session.user.id,
     });
 
     return {
       success: true,
-      chatId
+      chatId,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     logger.error("Failed to delete chat", {
       chatId,
-      error: errorMessage
+      error: errorMessage,
     });
 
     return {
       success: false,
-      error: errorMessage === "Chat not found or access denied"
-        ? "Chat not found"
-        : "Failed to delete chat"
+      error:
+        errorMessage === "Chat not found or access denied"
+          ? "Chat not found"
+          : "Failed to delete chat",
     };
   }
 }

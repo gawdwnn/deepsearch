@@ -1,4 +1,3 @@
-
 import type { UIMessage } from "ai";
 import type { UserLocation } from "./location-context";
 
@@ -14,8 +13,6 @@ type SearchHistoryEntry = {
   query: string;
   results: SearchResult[];
 };
-
-
 
 export class SystemContext {
   /**
@@ -59,13 +56,15 @@ export class SystemContext {
     return this.messages
       .map((message) => {
         const role = message.role === "user" ? "**User**" : "**Assistant**";
-        
+
         const textParts = message.parts
           .filter((part) => part.type === "text" && "text" in part)
           .map((part) => (part as { text: string }).text)
           .join(" ");
-          
-        return textParts ? `${role}: ${textParts}` : `${role}: [No text content]`;
+
+        return textParts
+          ? `${role}: ${textParts}`
+          : `${role}: [No text content]`;
       })
       .join("\n\n");
   }
@@ -94,26 +93,26 @@ export class SystemContext {
 
   getLocationContext(): string {
     const locationParts: string[] = [];
-    
+
     if (this.userLocation.latitude && this.userLocation.longitude) {
       locationParts.push(`- lat: ${this.userLocation.latitude}`);
       locationParts.push(`- lon: ${this.userLocation.longitude}`);
     }
-    
+
     if (this.userLocation.city) {
       locationParts.push(`- city: ${this.userLocation.city}`);
     }
-    
+
     if (this.userLocation.country) {
       locationParts.push(`- country: ${this.userLocation.country}`);
     }
-    
+
     if (locationParts.length === 0) {
       return "";
     }
-    
+
     return `About the origin of user's request:
-${locationParts.join('\n')}
+${locationParts.join("\n")}
 `;
   }
 }

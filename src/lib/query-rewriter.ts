@@ -13,14 +13,14 @@ export const queryPlanSchema = z.object({
   plan: z
     .string()
     .describe(
-      "A detailed research plan explaining the logical progression of information needed to answer the question. Explain what foundational knowledge is required, dependencies between information pieces, and the strategic approach."
+      "A detailed research plan explaining the logical progression of information needed to answer the question. Explain what foundational knowledge is required, dependencies between information pieces, and the strategic approach.",
     ),
   queries: z
     .array(z.string())
     .min(1)
     .max(3)
     .describe(
-      "A numbered list of 1-3 sequential search queries that are specific, focused, written in natural language, and build upon each other logically. Start with broader context before narrowing to specifics."
+      "A numbered list of 1-3 sequential search queries that are specific, focused, written in natural language, and build upon each other logically. Start with broader context before narrowing to specifics.",
     ),
 });
 

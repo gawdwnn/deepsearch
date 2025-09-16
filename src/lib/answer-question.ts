@@ -6,8 +6,8 @@ import { markdownJoinerTransform } from "./markdown-transform";
 
 export const answerQuestion = (
   context: SystemContext,
-  options: { 
-    isFinal?: boolean; 
+  options: {
+    isFinal?: boolean;
     langfuseTraceId?: string;
   } = {},
 ): StreamTextResult<Record<string, never>, string> => {
@@ -37,7 +37,7 @@ The research context you receive contains focused summaries of web content that 
 - Be thorough but concise
 - Trust the research summaries as they contain the most relevant extracted information
 
-${isFinal ? 'Note: you may not have all the information you need, to answer the question completely. Please provide your best attempt at an answer based oh the available information.' : ''}
+${isFinal ? "Note: you may not have all the information you need, to answer the question completely. Please provide your best attempt at an answer based oh the available information." : ""}
 `,
     prompt: `## Conversation History: ${context.getMessageHistory()}
 ${context.getLocationContext()}

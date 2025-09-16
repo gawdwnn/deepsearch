@@ -1,6 +1,4 @@
-import {
-  type UIMessage,
-} from "ai";
+import { type UIMessage } from "ai";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -8,7 +6,10 @@ import { auth } from "~/lib/auth";
 import { streamFromDeepSearch } from "~/lib/deep-search";
 import { langfuse } from "~/lib/lanfuse";
 import { checkUserRateLimit, trackUserRequest } from "~/lib/rate-limiter";
-import { checkGlobalRateLimit, recordGlobalRequest } from "~/lib/global-rate-limiter";
+import {
+  checkGlobalRateLimit,
+  recordGlobalRequest,
+} from "~/lib/global-rate-limiter";
 import { getLocationFromRequest } from "~/lib/location-context";
 import { logger } from "~/utils/logger";
 
@@ -70,9 +71,9 @@ export async function POST(req: NextRequest) {
         userId: session.user.id,
       },
     });
-    
+
     await trackUserRequest(session.user.id);
-    
+
     trackRequestSpan.end({
       output: {
         success: true,
@@ -92,7 +93,9 @@ export async function POST(req: NextRequest) {
       input: globalRateLimitConfig,
     });
 
-    const globalRateLimitCheck = await checkGlobalRateLimit(globalRateLimitConfig);
+    const globalRateLimitCheck = await checkGlobalRateLimit(
+      globalRateLimitConfig,
+    );
 
     if (!globalRateLimitCheck.isAllowed) {
       logger.info("Global rate limit exceeded, waiting for reset...", {
@@ -102,7 +105,7 @@ export async function POST(req: NextRequest) {
 
       // Wait for the rate limit to reset
       const isAllowed = await globalRateLimitCheck.retry();
-      
+
       if (!isAllowed) {
         globalRateLimitSpan.end({
           output: {
@@ -111,7 +114,9 @@ export async function POST(req: NextRequest) {
           },
         });
         return NextResponse.json(
-          { error: "System is temporarily busy. Please try again in a moment." },
+          {
+            error: "System is temporarily busy. Please try again in a moment.",
+          },
           { status: 429 },
         );
       }
@@ -152,4 +157,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
- 

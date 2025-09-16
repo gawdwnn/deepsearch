@@ -7,7 +7,6 @@ export interface UserLocation {
   country?: string;
 }
 
-
 export function getLocationFromRequest(request: Request): UserLocation {
   // Mock location data for development
   if (process.env.NODE_ENV === "development") {
