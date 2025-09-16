@@ -7,7 +7,7 @@ import {
 import { runAgentLoop } from "./run-agent-loop";
 import { upsertChat } from "~/lib/db/mutations";
 import { logger } from "~/utils/logger";
-import type { DeepSearchUIMessage } from "~/types/messages";
+import type { DeepSearchUIMessage, ActionStep } from "~/types/messages";
 import type { UserLocation } from "./location-context";
 
 interface LangfuseSpan {
@@ -50,14 +50,28 @@ export const streamFromDeepSearch = async (opts: {
   userLocation?: UserLocation;
 } & PersistenceContext) => {
 
+  // Store final action steps for persistence
+  let finalActionSteps: ActionStep[] = [];
+
   // Create UI message stream with AI SDK v5 Data Parts
   const stream = createUIMessageStream<DeepSearchUIMessage>({
     execute: async ({ writer }) => {
-      const agentResult = await runAgentLoop(opts.messages, writer, {
+      // Create assistant message before action steps stream
+      writer.write({
+        type: 'text-start',
+        id: 'assistant-response'
+      });
+
+      const { result, finalActionSteps: steps } = await runAgentLoop(opts.messages, writer, {
         langfuseTraceId: opts.langfuseTraceId,
         userLocation: opts.userLocation,
       });
-      writer.merge(agentResult.toUIMessageStream());
+
+      finalActionSteps = steps;
+
+      writer.merge(result.toUIMessageStream({
+        sendStart: false
+      }));
     },
     originalMessages: opts.messages as DeepSearchUIMessage[],
     onFinish: async ({ messages: allMessages }) => {
@@ -92,6 +106,21 @@ export const streamFromDeepSearch = async (opts: {
             messageCount: allMessages.length,
           },
         });
+
+        // Add final action steps to the last assistant message for persistence
+        if (finalActionSteps.length > 0) {
+          const lastAssistantMessage = allMessages.findLast(msg => msg.role === 'assistant');
+          if (lastAssistantMessage?.parts) {
+            // Add persistent action steps data part
+            lastAssistantMessage.parts.push({
+              type: 'data-action-steps',
+              data: {
+                steps: finalActionSteps,
+                currentStep: finalActionSteps[finalActionSteps.length - 1]?.id
+              }
+            });
+          }
+        }
 
         await upsertChat({
           userId: opts.userId,
@@ -141,10 +170,10 @@ export async function askDeepSearch(
     },
   };
   
-  const result = await runAgentLoop(messages, noOpWriter, {
+  const { result } = await runAgentLoop(messages, noOpWriter, {
     langfuseTraceId: opts.langfuseTraceId,
   });
-  
+
   // Consume the stream and return the text
   await result.consumeStream();
   return await result.text;

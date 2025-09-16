@@ -7,9 +7,10 @@ import { CollapsibleProgress } from "./collapsible-progress";
 interface ChatMessageProps {
   messages: UIMessage[];
   userName: string;
+  liveActionSteps?: ActionStep[];
 }
 
-export const ChatMessage = ({ messages, userName }: ChatMessageProps) => {
+export const ChatMessage = ({ messages, userName, liveActionSteps = [] }: ChatMessageProps) => {
   return (
     <>
       {messages.map((message, index) => {
@@ -30,20 +31,30 @@ export const ChatMessage = ({ messages, userName }: ChatMessageProps) => {
                 {isAI ? "AI" : userName}
               </p>
 
-              {/* Show action steps for AI messages (persisted or live) */}
-              {isAI && (() => {
-                const actionPart = message.parts.find(part => part.type === 'data-action-steps');
-                if (actionPart && 'data' in actionPart) {
-                  const actionData = actionPart.data as { steps?: ActionStep[] };
-                  if (actionData?.steps?.length) {
+              {(() => {
+                const isLastMessage = index === messages.length - 1;
+
+                if (isLastMessage && liveActionSteps.length > 0) {
+                  return (
+                    <CollapsibleProgress
+                      actionSteps={liveActionSteps}
+                      defaultExpanded={true}
+                    />
+                  );
+                }
+                if (isAI) {
+                  const actionPart = message.parts.find(part => part.type === 'data-action-steps');
+                  const persistedSteps = actionPart && 'data' in actionPart ? (actionPart.data as { steps?: ActionStep[] })?.steps : undefined;
+                  if (persistedSteps?.length) {
                     return (
-                      <CollapsibleProgress 
-                        actionSteps={actionData.steps}
-                        defaultExpanded={false}
+                      <CollapsibleProgress
+                        actionSteps={persistedSteps}
+                        defaultExpanded={isLastMessage}
                       />
                     );
                   }
                 }
+
                 return null;
               })()}
 

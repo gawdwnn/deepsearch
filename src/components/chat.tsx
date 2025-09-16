@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { StickToBottom } from "use-stick-to-bottom";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
+import type { ActionStep } from "~/types/messages";
 
 interface ChatProps {
   userName: string;
@@ -31,17 +32,39 @@ export const ChatPage = ({
       api: "/api/chat",
     }),
     messages: initialMessages,
+    onData: (dataPart) => {
+      if (dataPart.type === 'data-action-step') {
+        const stepData = dataPart.data as ActionStep;
+
+        setLiveActionSteps(prev => {
+          const existing = prev.find(s => s.id === stepData.id);
+
+          if (existing) {
+            // Only update if timestamp is newer (prevent duplicate updates)
+            if (stepData.timestamp > existing.timestamp) {
+              return prev.map(s => s.id === stepData.id ? stepData : s);
+            } else {
+              return prev; // No change
+            }
+          } else {
+            // Add new step
+            return [...prev, stepData];
+          }
+        });
+      }
+    },
   });
   const [input, setInput] = useState("");
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [hasSentFirstMessage, setHasSentFirstMessage] = useState(false);
+  const [liveActionSteps, setLiveActionSteps] = useState<ActionStep[]>([]);
+
 
   // Generate consistent chat ID for new chats
   const [generatedChatId] = useState(() =>
     isNewChat ? crypto.randomUUID() : null,
   );
 
-  // If this is a new chat and we've sent a message, redirect with the generated ID
   useEffect(() => {
     if (
       isNewChat &&
@@ -74,6 +97,8 @@ export const ChatPage = ({
     }
 
     if (input.trim()) {
+      setLiveActionSteps([]);
+
       void sendMessage(
         { text: input.trim() },
         {
@@ -100,10 +125,10 @@ export const ChatPage = ({
           aria-label="Chat messages"
         >
           <StickToBottom.Content className="flex flex-col gap-4">
-            {/* Single ChatMessage component handles everything */}
             <ChatMessage
               messages={messages}
               userName={userName}
+              liveActionSteps={liveActionSteps}
             />
           </StickToBottom.Content>
         </StickToBottom>
