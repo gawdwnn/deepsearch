@@ -1,12 +1,12 @@
-import type { UIMessage } from 'ai';
+import type { UIMessage } from "ai";
 
 export type MessagePart = NonNullable<UIMessage["parts"]>[number];
 export interface ActionStep {
   id: string;
-  action: 'plan' | 'search' | 'continue' | 'answer';
+  action: "plan" | "search" | "continue" | "answer";
   title: string;
   reasoning: string;
-  phase: 'starting' | 'in_progress' | 'completed' | 'failed';
+  phase: "starting" | "in_progress" | "completed" | "failed";
   timestamp: number;
   metadata?: {
     plan?: string;
@@ -32,19 +32,19 @@ export interface MessageMetadata {
 
 // AI SDK v5 Data Parts types
 export interface DataParts {
-  'action-steps': {
+  "action-steps": {
     steps: ActionStep[];
     currentStep?: string; // ID of currently active step
   };
-  'action-step': ActionStep; // Individual step for transient streaming
-  'citations': {
+  "action-step": ActionStep; // Individual step for transient streaming
+  citations: {
     sources: Array<{
       url: string;
       title: string;
       relevance: number;
     }>;
   };
-  'search-results': {
+  "search-results": {
     query: string;
     results: Array<{
       title: string;
@@ -58,27 +58,3 @@ export interface DataParts {
 
 // Typed UIMessage for this application
 export type DeepSearchUIMessage = UIMessage<MessageMetadata, DataParts>;
-
-// Action step helpers
-export const createActionStep = (
-  id: string,
-  action: ActionStep['action'],
-  title: string,
-  reasoning: string
-): ActionStep => ({
-  id,
-  action,
-  title,
-  reasoning,
-  phase: 'starting',
-  timestamp: Date.now(),
-});
-
-export const updateActionStep = (
-  step: ActionStep,
-  updates: Partial<Pick<ActionStep, 'phase' | 'metadata'>>
-): ActionStep => ({
-  ...step,
-  ...updates,
-  timestamp: Date.now(),
-});
