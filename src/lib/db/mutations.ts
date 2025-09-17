@@ -1,7 +1,7 @@
-import { eq, and } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import type { DeepSearchUIMessage } from "~/types/messages";
 import { db } from "./index";
 import { chats, messages } from "./schema";
-import type { DeepSearchUIMessage } from "~/types/messages";
 
 export const upsertChat = async (opts: {
   userId: string;
@@ -86,4 +86,21 @@ export const deleteChat = async (opts: { chatId: string; userId: string }) => {
   }
 
   return result[0];
+};
+
+export const updateChatActiveStreamId = async (opts: {
+  chatId: string;
+  streamId: string | null;
+  userId?: string;
+}) => {
+  const { chatId, streamId, userId } = opts;
+
+  const where = userId
+    ? and(eq(chats.id, chatId), eq(chats.userId, userId))
+    : eq(chats.id, chatId);
+
+  await db
+    .update(chats)
+    .set({ activeStreamId: streamId, updatedAt: new Date() })
+    .where(where);
 };

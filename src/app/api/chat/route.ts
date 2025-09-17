@@ -148,7 +148,6 @@ export async function POST(req: NextRequest) {
     logger.error("Chat API error", {
       error: error instanceof Error ? error.message : String(error),
       userId: session.user.id,
-      userEmail: session.user.email,
       stack: error instanceof Error ? error.stack : undefined,
     });
     return NextResponse.json(

@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { type UIMessage, DefaultChatTransport } from "ai";
 import { Square } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { StickToBottom } from "use-stick-to-bottom";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
@@ -27,11 +27,21 @@ export const ChatPage = ({
 }: ChatProps) => {
   const router = useRouter();
 
+  const [generatedChatId] = useState(() =>
+    isNewChat ? crypto.randomUUID() : null,
+  );
+
   const { messages, status, sendMessage } = useChat({
+    id: isNewChat ? generatedChatId! : (chatId!),
     transport: new DefaultChatTransport({
       api: "/api/chat",
+      prepareReconnectToStreamRequest: ({ id }) => ({
+        api: `/api/chat/${id}/stream`,
+        credentials: "include",
+      }),
     }),
     messages: initialMessages,
+    resume: true,
     onData: (dataPart) => {
       if (dataPart.type === "data-action-step") {
         const stepData = dataPart.data as ActionStep;
@@ -49,11 +59,6 @@ export const ChatPage = ({
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [hasSentFirstMessage, setHasSentFirstMessage] = useState(false);
   const [liveActionSteps, setLiveActionSteps] = useState<ActionStep[]>([]);
-
-  // Generate consistent chat ID for new chats
-  const [generatedChatId] = useState(() =>
-    isNewChat ? crypto.randomUUID() : null,
-  );
 
   useEffect(() => {
     if (
@@ -140,7 +145,7 @@ export const ChatPage = ({
               />
               <button
                 type="submit"
-                disabled={!input.trim() || status !== "ready"}
+                disabled={!input.trim()}
                 className="rounded bg-gray-700 px-4 py-2 text-white hover:bg-gray-600 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:hover:bg-gray-700"
               >
                 {status === "streaming" ? (

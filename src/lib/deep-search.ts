@@ -1,11 +1,17 @@
 import type { UIMessage } from "ai";
-import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import {
+  createUIMessageStream,
+  JsonToSseTransformStream,
+  UI_MESSAGE_STREAM_HEADERS,
+} from "ai";
 
-import { runAgentLoop } from "./run-agent-loop";
-import { upsertChat } from "~/lib/db/mutations";
+import { after } from "next/server";
+import { createResumableStreamContext } from "resumable-stream";
+import { updateChatActiveStreamId, upsertChat } from "~/lib/db/mutations";
+import type { ActionStep, DeepSearchUIMessage } from "~/types/messages";
 import { logger } from "~/utils/logger";
-import type { DeepSearchUIMessage, ActionStep } from "~/types/messages";
 import type { UserLocation } from "./location-context";
+import { runAgentLoop } from "./run-agent-loop";
 
 interface LangfuseSpan {
   end: (data: {
@@ -148,6 +154,9 @@ export const streamFromDeepSearch = async (
         });
 
         await opts.langfuse.flushAsync();
+
+        // Clear active stream on finish
+        await updateChatActiveStreamId({ chatId: opts.chatId, streamId: null });
       } catch (error) {
         logger.error("Failed to save chat messages", {
           error: error instanceof Error ? error.message : String(error),
@@ -158,7 +167,23 @@ export const streamFromDeepSearch = async (
     },
   });
 
-  return createUIMessageStreamResponse({ stream });
+  // Register resumable SSE stream and return it
+  const streamId = crypto.randomUUID();
+
+  // Set active stream id for this chat
+  await updateChatActiveStreamId({ chatId: opts.chatId, streamId });
+
+  // Convert to SSE
+  const sse = stream.pipeThrough(new JsonToSseTransformStream());
+
+  // Split the SSE stream into two branches to avoid locking the body
+  const [sseForClient, sseForResumable] = sse.tee();
+
+  // Create resumable stream
+  const streamContext = createResumableStreamContext({ waitUntil: after });
+  await streamContext.createNewResumableStream(streamId, () => sseForResumable);
+
+  return new Response(sseForClient, { headers: UI_MESSAGE_STREAM_HEADERS });
 };
 
 export async function askDeepSearch(

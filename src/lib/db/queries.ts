@@ -27,3 +27,14 @@ export const getChats = async (opts: { userId: string }) => {
     orderBy: (chats, { desc }) => [desc(chats.updatedAt)],
   });
 };
+
+export const getResumableChat = async (opts: {
+  chatId: string;
+}) => {
+  const { chatId } = opts;
+
+  return await db.query.chats.findFirst({
+    where: eq(chats.id, chatId),
+    columns: { userId: true, activeStreamId: true },
+  });
+};
