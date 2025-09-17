@@ -1,18 +1,18 @@
+import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
 import {
+  boolean,
   index,
   integer,
+  json,
   pgTableCreator,
   primaryKey,
+  serial,
   text,
   timestamp,
   varchar,
-  json,
-  boolean,
-  serial,
 } from "drizzle-orm/pg-core";
 import { type AdapterAccount } from "next-auth/adapters";
-import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
 /**
  * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
@@ -163,6 +163,7 @@ export const chats = createTable(
     })
       .notNull()
       .default(sql`CURRENT_TIMESTAMP`),
+    activeStreamId: varchar("active_stream_id", { length: 255 }),
   },
   (chat) => ({
     userIdIdx: index("chat_user_id_idx").on(chat.userId),
